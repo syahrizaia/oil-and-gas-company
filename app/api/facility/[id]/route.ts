@@ -1,31 +1,48 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/facility/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import FacilityObject from '@/models/FacilityObject';
 import dbConnect from '@/lib/dbConnect';
+import { connectToDatabase } from '@/lib/mongodb';
+import Facility from '@/models/Facility';
 
 // GET: Ambil detail objek berdasarkan objectId dari Unity
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> } // Next.js 15+ mewajibkan params berupa Promise
 ) {
   try {
-    await dbConnect();
-    const { id } = params;
+    await connectToDatabase();
 
-    const facilityData = await FacilityObject.findOne({ objectId: id });
+    // Mengambil parameter id dengan await
+    const { id } = await params;
 
-    if (!facilityData) {
+    // Cari fasilitas berdasarkan objectId di MongoDB
+    const facility = await Facility.findOne({ objectId: id });
+
+    if (!facility) {
       return NextResponse.json(
-        { message: `Aset dengan ID '${id}' tidak ditemukan di database.` },
+        {
+          success: false,
+          message: `Fasilitas dengan ID '${id}' tidak ditemukan di MongoDB.`,
+        },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(facilityData, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: facility,
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     return NextResponse.json(
-      { message: 'Gagal mengambil data', error: error.message },
+      {
+        success: false,
+        message: error.message || 'Terjadi kesalahan pada Server Database',
+      },
       { status: 500 }
     );
   }
