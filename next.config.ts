@@ -28,6 +28,19 @@ const nextConfig = {
           { key: 'Content-Encoding', value: 'br' },
         ],
       },
+      {
+        source: '/unity-build/Build/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/wasm',
+          },
+        ],
+      },
     ];
   },
 };
