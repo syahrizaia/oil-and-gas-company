@@ -9,40 +9,25 @@ import Facility from '@/models/Facility';
 // GET: Ambil detail objek berdasarkan objectId dari Unity
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> } // Next.js 15+ mewajibkan params berupa Promise
+  { params }: { params: Promise<{ id: string }> } // Wajib berbentuk Promise
 ) {
   try {
     await connectToDatabase();
-
-    // Mengambil parameter id dengan await
     const { id } = await params;
 
-    // Cari fasilitas berdasarkan objectId di MongoDB
     const facility = await Facility.findOne({ objectId: id });
 
     if (!facility) {
       return NextResponse.json(
-        {
-          success: false,
-          message: `Fasilitas dengan ID '${id}' tidak ditemukan di MongoDB.`,
-        },
+        { success: false, message: `Fasilitas ID '${id}' tidak ditemukan.` },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: facility,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, data: facility }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Terjadi kesalahan pada Server Database',
-      },
+      { success: false, message: error.message || 'Server Error' },
       { status: 500 }
     );
   }
