@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Next.js
+.next/
+node_modules/
+*.log
+
+# Unity Editor Temporary Files (WAJIB di-ignore)
+[A-a]rchives/
+[L-l]ibrary/
+[L-l]ogs/
+[O-o]bj/
+[T-t]emp/
+[U-u]ser[S-s]ettings/
+[M-m]emoryCaptures/
+*.csproj
+*.sln
