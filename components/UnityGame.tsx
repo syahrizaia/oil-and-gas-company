@@ -231,28 +231,118 @@ export default function UnityGame() {
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-medium text-slate-400 px-1">Fokus Cepat:</span>
             <button
+              onClick={() => handleSelectFacility('PlayerArmature')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Karakter
+            </button>
+            <button
               onClick={() => handleSelectFacility('Large Tank (1)')}
               className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
             >
-              🛢️ Tangki 01
+              Large Tank 01
             </button>
             <button
               onClick={() => handleSelectFacility('Large Tank (2)')}
               className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
             >
-              🛢️ Tangki 02
+              Large Tank 02
             </button>
             <button
               onClick={() => handleSelectFacility('Large Tank (3)')}
               className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
             >
-              🛢️ Tangki 03
+              Large Tank 03
             </button>
             <button
               onClick={() => handleSelectFacility('Large Tank (4)')}
               className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
             >
-              🛢️ Tangki 04
+              Large Tank 04
+            </button>
+            <button
+              onClick={() => handleSelectFacility('Long_Tanks (1)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Long_Tanks 1
+            </button>
+            <button
+              onClick={() => handleSelectFacility('Long_Tanks (2)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Long_Tanks 2
+            </button>
+            <button
+              onClick={() => handleSelectFacility('Long_Tanks (3)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Long_Tanks 3
+            </button>
+            <button
+              onClick={() => handleSelectFacility('Long_Tanks (4)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Long_Tanks 4
+            </button>
+            <button
+              onClick={() => handleSelectFacility('Round_tanks (1)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Round_tanks 1
+            </button>
+            <button
+              onClick={() => handleSelectFacility('Round_tanks (2)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Round_tanks 2
+            </button>
+            <button
+              onClick={() => handleSelectFacility('cistern (1)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Cistern 1
+            </button>
+            <button
+              onClick={() => handleSelectFacility('cistern (2)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Cistern 2
+            </button>
+            <button
+              onClick={() => handleSelectFacility('cistern (3)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Cistern 3
+            </button>
+            <button
+              onClick={() => handleSelectFacility('cistern (4)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              Cistern 4
+            </button>
+            <button
+              onClick={() => handleSelectFacility('cistern_big (1)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              cistern_big 1
+            </button>
+            <button
+              onClick={() => handleSelectFacility('cistern_big (2)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              cistern_big 2
+            </button>
+            <button
+              onClick={() => handleSelectFacility('cistern_big (3)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              cistern_big 3
+            </button>
+            <button
+              onClick={() => handleSelectFacility('cistern_big (4)')}
+              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
+            >
+              cistern_big 4
             </button>
           </div>
         </div>
