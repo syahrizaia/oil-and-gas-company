@@ -55,3 +55,4 @@ node_modules/
 [M-m]emoryCaptures/
 *.csproj
 *.sln
+public/unity-build/Build
