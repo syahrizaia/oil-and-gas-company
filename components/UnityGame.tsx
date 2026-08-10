@@ -6,15 +6,66 @@ import { Unity, useUnityContext } from 'react-unity-webgl';
 import FacilityDrawer from './FacilityDrawer';
 import { FacilityObjectData } from '@/types/facility';
 
-// Interface untuk data telemetri fisik 3D yang dikirim dari C#
+// Interface untuk data telemetri fisik 3D dari C#
 export interface Metrics3D {
   objectName: string;
   position: { x: number; y: number; z: number };
   size: { x: number; y: number; z: number };
 }
 
+// Daftar Pilihan Aset Fasilitas untuk Dropdown HUD
+const FACILITY_ASSETS = [
+  {
+    category: 'Pemain / Karakter',
+    items: [{ id: 'NestedParentArmature_Unpack', label: '🚶 Karakter Inspeksi' }],
+  },
+  {
+    category: 'Large Tanks',
+    items: [
+      { id: 'Large Tank (1)', label: 'Large Tank 01' },
+      { id: 'Large Tank (2)', label: 'Large Tank 02' },
+      { id: 'Large Tank (3)', label: 'Large Tank 03' },
+      { id: 'Large Tank (4)', label: 'Large Tank 04' },
+    ],
+  },
+  {
+    category: 'Long Tanks',
+    items: [
+      { id: 'Long_Tanks (1)', label: 'Long Tank 01' },
+      { id: 'Long_Tanks (2)', label: 'Long Tank 02' },
+      { id: 'Long_Tanks (3)', label: 'Long Tank 03' },
+      { id: 'Long_Tanks (4)', label: 'Long Tank 04' },
+    ],
+  },
+  {
+    category: 'Round Tanks',
+    items: [
+      { id: 'Round_tanks (1)', label: 'Round Tank 01' },
+      { id: 'Round_tanks (2)', label: 'Round Tank 02' },
+    ],
+  },
+  {
+    category: 'Cisterns Standard',
+    items: [
+      { id: 'cistern (1)', label: 'Cistern 01' },
+      { id: 'cistern (2)', label: 'Cistern 02' },
+      { id: 'cistern (3)', label: 'Cistern 03' },
+      { id: 'cistern (4)', label: 'Cistern 04' },
+    ],
+  },
+  {
+    category: 'Cisterns Big',
+    items: [
+      { id: 'cistern_big (1)', label: 'Cistern Big 01' },
+      { id: 'cistern_big (2)', label: 'Cistern Big 02' },
+      { id: 'cistern_big (3)', label: 'Cistern Big 03' },
+      { id: 'cistern_big (4)', label: 'Cistern Big 04' },
+    ],
+  },
+];
+
 export default function UnityGame() {
-  // 1. Inisialisasi Provider dan Fungsi Komunikasi dari useUnityContext
+  // 1. Inisialisasi Context WebGL
   const {
     unityProvider,
     isLoaded,
@@ -36,14 +87,15 @@ export default function UnityGame() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // State untuk 3 Kamera di Unity
+  // State Navigation Mode
+  const [isWalkMode, setIsWalkMode] = useState<boolean>(false);
   const [activeCamIndex, setActiveCamIndex] = useState<number>(0);
+  const [selectedAssetId, setSelectedAssetId] = useState<string>('');
 
-  // Daftar opsi kamera beserta ID & nama GameObject
   const cameraOptions = [
-    { id: 0, label: '🗺️ Map Overview', name: 'OverviewCamera' },
+    { id: 0, label: '🗺️ Overview', name: 'OverviewCamera' },
     { id: 1, label: '🛢️ Orbit Focus', name: 'OrbitCamera' },
-    { id: 2, label: '🔍 Detail Inspector', name: 'InspectionCamera' },
+    { id: 2, label: '🔍 Inspection', name: 'InspectionCamera' },
   ];
 
   // =========================================================================
@@ -55,7 +107,6 @@ export default function UnityGame() {
     setError(null);
 
     try {
-      // Encode targetId untuk menangani spasi & karakter khusus (misal: "Large Tank (1)")
       const encodedId = encodeURIComponent(targetId);
       const response = await fetch(`/api/facility/${encodedId}`);
 
@@ -78,68 +129,100 @@ export default function UnityGame() {
   }, []);
 
   // =========================================================================
-  // A. KONTROL DARI UNITY KE REACT (Event Listener dari .jslib)
+  // A. EVENT LISTENERS (DARI UNITY/JSLIB KE REACT)
   // =========================================================================
-  const handleObjectSelected = useCallback((payload: string) => {
-    console.log('[React] Payload diterima dari Unity:', payload);
+  const handleObjectSelected = useCallback(
+    (payload: string) => {
+      console.log('[React] Payload diterima dari Unity:', payload);
+      let targetId = payload;
 
-    let targetId = payload;
-
-    // Cek apakah payload berisi JSON string dari C# ObjectMetrics
-    try {
-      if (payload.startsWith('{')) {
-        const parsedMetrics: Metrics3D = JSON.parse(payload);
-        setMetrics3D(parsedMetrics);
-        targetId = parsedMetrics.objectName; // Gunakan nama objek sebagai ID
+      try {
+        if (payload.startsWith('{')) {
+          const parsedMetrics: Metrics3D = JSON.parse(payload);
+          setMetrics3D(parsedMetrics);
+          targetId = parsedMetrics.objectName;
+        }
+      } catch (e) {
+        console.warn('[React] Payload bukan JSON, menggunakan ID mentah:', e);
       }
-    } catch (e) {
-      console.warn('[React] Payload bukan JSON string, menggunakan ID mentah:', e);
-    }
 
-    // Ambil data fasilitas dari API
-    fetchFacilityData(targetId);
-  }, [fetchFacilityData]);
+      setSelectedAssetId(targetId);
+      fetchFacilityData(targetId);
+    },
+    [fetchFacilityData]
+  );
+
+  // Sync status Walk Mode dari Unity (saat user tekan ESC di Unity)
+  const handleWalkModeChange = useCallback((isWalk: any) => {
+    const active = typeof isWalk === 'boolean' ? isWalk : String(isWalk) === 'true';
+    setIsWalkMode(active);
+  }, []);
 
   useEffect(() => {
-    // Daftarkan listener event dari Unity (.jslib)
     addEventListener('OnObjectSelected', handleObjectSelected);
+    addEventListener('ON_WALK_MODE_CHANGE', handleWalkModeChange);
 
-    // Pembersihan listener saat komponen ditutup
     return () => {
       removeEventListener('OnObjectSelected', handleObjectSelected);
+      removeEventListener('ON_WALK_MODE_CHANGE', handleWalkModeChange);
     };
-  }, [addEventListener, removeEventListener, handleObjectSelected]);
+  }, [addEventListener, removeEventListener, handleObjectSelected, handleWalkModeChange]);
 
   // =========================================================================
-  // B. KONTROL DARI REACT KE UNITY (sendMessage ke C#)
+  // B. KONTROL INTERAKSI (DARI REACT KE UNITY)
   // =========================================================================
 
-  // 1. Fungsi Terintegrasi: Pilih Fasilitas dari UI React (Fokus Kamera + Fetch Data)
+  // Function Khusus: Kembali & Sinkronisasi Ke Karakter (Walk Mode + Camera Sync)
+  const handleFocusPlayer = () => {
+    if (!isLoaded) return;
+    setSelectedAssetId('PlayerArmature');
+    
+    // Panggil fungsi FocusOnPlayer di Unity untuk sinkronisasi arah pandang & rotasi jalan
+    sendMessage('CameraManager', 'FocusOnPlayer');
+    setIsWalkMode(true);
+  };
+
+  // 1. Fokus Kamera & Fetch Data berdasarkan Aset yang dipilih
   const handleSelectFacility = (objectName: string) => {
-    if (isLoaded) {
-      // 1. Minta Unity gerakkan kamera ke nama GameObject tersebut
-      sendMessage('CameraManager', 'FocusOnObject', objectName);
+    if (!objectName) return;
+    setSelectedAssetId(objectName);
 
-      // 2. Fetch data detail dari Next.js API
+    // Jika user memilih Player/Karakter, jalankan sinkronisasi khusus ke Karakter
+    if (objectName === 'PlayerArmature') {
+      handleFocusPlayer();
+      return;
+    }
+
+    if (isLoaded) {
+      // Keluar dari Walk Mode jika sedang melihat tangki lain
+      if (isWalkMode) handleExitWalk();
+
+      sendMessage('CameraManager', 'FocusOnObject', objectName);
       fetchFacilityData(objectName);
     }
   };
 
-  // 2. Fungsi Switch Kamera (3 Kamera)
+  // 2. Walk Mode Handlers
+  const handleEnterWalk = () => {
+    if (!isLoaded) return;
+    sendMessage('CameraManager', 'EnterWalkMode');
+    setIsWalkMode(true);
+  };
+
+  const handleExitWalk = () => {
+    if (!isLoaded) return;
+    sendMessage('CameraManager', 'ExitWalkMode');
+    setIsWalkMode(false);
+  };
+
+  // 3. Switch Kamera Presets
   const handleSwitchCamera = (index: number) => {
     if (!isLoaded) return;
     setActiveCamIndex(index);
     sendMessage('CameraManager', 'SwitchCameraByIndex', index);
   };
 
-  // 3. Switch Camera POV
-  const handleSetPOV = (mode: string) => {
-    if (isLoaded) {
-      sendMessage('CameraManager', 'SetPOV', mode);
-    }
-  };
-
-  // 4. Set Kecepatan Karakter
+  // 4. Set Speed Karakter
   const handleSetSpeed = (speedValue: number) => {
     if (isLoaded) {
       sendMessage('Player', 'SetSpeed', speedValue);
@@ -147,8 +230,8 @@ export default function UnityGame() {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-slate-950">
-      {/* Loading Overlay (Ditampilkan saat file WebGL sedang dimuat) */}
+    <div className="relative w-full h-screen overflow-hidden bg-slate-950 select-none">
+      {/* Loading Overlay */}
       {!isLoaded && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 text-white">
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
@@ -164,28 +247,71 @@ export default function UnityGame() {
         </div>
       )}
 
-      {/* Canvas WebGL 3D Unity */}
+      {/* Canvas WebGL Unity */}
       <Unity
         unityProvider={unityProvider}
         className="w-full h-full"
         style={{ visibility: isLoaded ? 'visible' : 'hidden' }}
       />
 
-      {/* HUD Controls Overlay (Melayang di atas Canvas 3D) */}
+      {/* Floating Alert Indicator saat Walk Mode Aktif */}
+      {isLoaded && isWalkMode && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-amber-500/90 text-slate-950 font-semibold px-4 py-2 rounded-full shadow-lg backdrop-blur-md border border-amber-400 text-xs animate-pulse">
+          <span>🎮 Mode Jalan Aktif — Gunakan WASD / Mouse</span>
+          <button
+            onClick={handleExitWalk}
+            className="bg-slate-950 text-white px-2.5 py-1 rounded-full text-[11px] hover:bg-slate-800 transition"
+          >
+            Keluar (ESC)
+          </button>
+        </div>
+      )}
+
+      {/* HUD Bar Control */}
       {isLoaded && (
-        <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-3 bg-slate-900/80 backdrop-blur-md p-2.5 rounded-xl border border-slate-800 shadow-2xl">
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5 bg-slate-900/85 backdrop-blur-md p-2 rounded-xl border border-slate-800/80 shadow-2xl text-xs">
           
-          {/* SWITCH 3 KAMERA */}
-          <div className="flex items-center gap-1.5 pr-3 border-r border-slate-700/60">
-            <span className="text-xs font-medium text-slate-400 px-1">Kamera:</span>
+          {/* Mode Switcher: Walk Mode & Reset Player */}
+          <div className="flex items-center gap-1.5 pr-2 border-r border-slate-800">
+            {!isWalkMode ? (
+              <button
+                onClick={handleEnterWalk}
+                className="flex items-center gap-1.5 px-3 py-1.5 font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition shadow-md shadow-emerald-900/30"
+              >
+                <span>🚶</span>
+                <span>Mode Jalan</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleExitWalk}
+                className="flex items-center gap-1.5 px-3 py-1.5 font-semibold bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition shadow-md shadow-rose-900/30"
+              >
+                <span>🛑</span>
+                <span>Keluar Walk</span>
+              </button>
+            )}
+
+            {/* Tombol Pintas: Kembali / Sinkron Ke Karakter */}
+            <button
+              onClick={handleFocusPlayer}
+              title="Kamera & karakter langsung sinkron ke arah depan"
+              className="flex items-center gap-1 px-2.5 py-1.5 font-medium bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 rounded-lg transition"
+            >
+              <span>🎯</span>
+              <span>Reset Ke Karakter</span>
+            </button>
+          </div>
+
+          {/* Selector Kamera Presets */}
+          <div className="flex items-center gap-1 pr-2 border-r border-slate-800">
             {cameraOptions.map((cam) => (
               <button
                 key={cam.id}
                 onClick={() => handleSwitchCamera(cam.id)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all border ${
+                className={`px-2.5 py-1.5 font-medium rounded-lg transition border ${
                   activeCamIndex === cam.id
-                    ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/20'
-                    : 'bg-slate-800 text-slate-300 border-slate-700/50 hover:bg-slate-700 hover:text-white'
+                    ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
+                    : 'bg-slate-800/80 text-slate-300 border-slate-700/50 hover:bg-slate-700 hover:text-white'
                 }`}
               >
                 {cam.label}
@@ -193,173 +319,60 @@ export default function UnityGame() {
             ))}
           </div>
 
-          {/* Switch Camera POV */}
-          <div className="flex items-center gap-1.5 pr-3 border-r border-slate-700/60">
-            <span className="text-xs font-medium text-slate-400 px-1">POV:</span>
-            <button
-              onClick={() => handleSetPOV('Overview')}
-              className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white rounded-lg transition border border-slate-700/50"
+          {/* Dropdown Asset Selector */}
+          <div className="flex items-center gap-1.5 pr-2 border-r border-slate-800">
+            <span className="text-slate-400 pl-1 font-medium">Aset:</span>
+            <select
+              value={selectedAssetId}
+              onChange={(e) => handleSelectFacility(e.target.value)}
+              className="bg-slate-800 text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
             >
-              🗺️ Map 3D
-            </button>
-            <button
-              onClick={() => handleSetPOV('Character')}
-              className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white rounded-lg transition border border-slate-700/50"
-            >
-              🚶 Karakter
-            </button>
+              <option value="" disabled>
+                -- Pilih Aset Tangki --
+              </option>
+              {FACILITY_ASSETS.map((group, idx) => (
+                <optgroup key={idx} label={group.category} className="bg-slate-900 text-slate-300">
+                  {group.items.map((asset) => (
+                    <option key={asset.id} value={asset.id} className="bg-slate-800 text-white">
+                      {asset.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
 
-          {/* Speed Controls */}
-          <div className="flex items-center gap-1.5 pr-3 border-r border-slate-700/60">
-            <span className="text-xs font-medium text-slate-400 px-1">Kecepatan:</span>
+          {/* Controls Kecepatan Karakter */}
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400 px-1 font-medium">Speed:</span>
             <button
               onClick={() => handleSetSpeed(2)}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700/50"
+              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition border border-slate-700/50 text-[11px]"
             >
-              Pelan (2)
+              2x
             </button>
             <button
               onClick={() => handleSetSpeed(10)}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700/50"
+              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition border border-slate-700/50 text-[11px]"
             >
-              Cepat (10)
-            </button>
-          </div>
-
-          {/* Quick Focus Buttons (Menggunakan handleSelectFacility) */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-slate-400 px-1">Fokus Cepat:</span>
-            <button
-              onClick={() => handleSelectFacility('PlayerArmature')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Karakter
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Large Tank (1)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Large Tank 01
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Large Tank (2)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Large Tank 02
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Large Tank (3)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Large Tank 03
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Large Tank (4)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Large Tank 04
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Long_Tanks (1)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Long_Tanks 1
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Long_Tanks (2)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Long_Tanks 2
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Long_Tanks (3)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Long_Tanks 3
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Long_Tanks (4)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Long_Tanks 4
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Round_tanks (1)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Round_tanks 1
-            </button>
-            <button
-              onClick={() => handleSelectFacility('Round_tanks (2)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Round_tanks 2
-            </button>
-            <button
-              onClick={() => handleSelectFacility('cistern (1)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Cistern 1
-            </button>
-            <button
-              onClick={() => handleSelectFacility('cistern (2)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Cistern 2
-            </button>
-            <button
-              onClick={() => handleSelectFacility('cistern (3)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Cistern 3
-            </button>
-            <button
-              onClick={() => handleSelectFacility('cistern (4)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              Cistern 4
-            </button>
-            <button
-              onClick={() => handleSelectFacility('cistern_big (1)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              cistern_big 1
-            </button>
-            <button
-              onClick={() => handleSelectFacility('cistern_big (2)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              cistern_big 2
-            </button>
-            <button
-              onClick={() => handleSelectFacility('cistern_big (3)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              cistern_big 3
-            </button>
-            <button
-              onClick={() => handleSelectFacility('cistern_big (4)')}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition border border-blue-500/50"
-            >
-              cistern_big 4
+              10x
             </button>
           </div>
         </div>
       )}
 
-      {/* Card Telemetri 3D Real-time (Koordinat XYZ & Dimensi Fisik) */}
+      {/* Card Telemetri Ruang 3D (Posisi & Bounding Box) */}
       {isLoaded && metrics3D && isDrawerOpen && (
-        <div className="absolute top-30 left-4 z-10 w-72 bg-slate-900/90 backdrop-blur-md border border-slate-800 p-3.5 rounded-xl shadow-2xl text-xs space-y-2.5">
+        <div className="absolute top-20 left-4 z-10 w-72 bg-slate-900/90 backdrop-blur-md border border-slate-800 p-3.5 rounded-xl shadow-2xl text-xs space-y-2.5">
           <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
             <span className="font-semibold text-blue-400">TELEMETRI RUANG 3D</span>
-            <span className="text-[10px] bg-blue-950 text-blue-300 border border-blue-800 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] bg-blue-950 text-blue-300 border border-blue-800 px-1.5 py-0.5 rounded font-mono">
               LIVE
             </span>
           </div>
-          
+
           <div>
-            <span className="text-slate-400 block text-[11px]">Posisi (World XYZ):</span>
+            <span className="text-slate-400 block text-[11px]">Posisi Koordinat (World XYZ):</span>
             <div className="grid grid-cols-3 gap-1.5 mt-1 font-mono text-center">
               <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
                 <span className="text-red-400 block text-[9px]">X</span>
@@ -396,7 +409,7 @@ export default function UnityGame() {
         </div>
       )}
 
-      {/* Slide-Over Drawer UI Telemetri MongoDB */}
+      {/* Drawer Detail Fasilitas (MongoDB) */}
       <FacilityDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}

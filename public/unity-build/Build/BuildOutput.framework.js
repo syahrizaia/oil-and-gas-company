@@ -6099,6 +6099,12 @@ async function createWasm() {
           requestOptions.timeout = timeout;
   	}
 
+  function _OnWalkModeToggledInJS(isWalkMode) {
+      if (window.dispatchReactEvent) {
+        window.dispatchReactEvent("ON_WALK_MODE_CHANGE", Boolean(isWalkMode));
+      }
+    }
+
   function _SendObjectDataToJS(jsonStringPtr) {
       var jsonString = UTF8ToString(jsonStringPtr);
       
@@ -18788,6 +18794,8 @@ var wasmImports = {
   JS_WebRequest_SetRequestHeader: _JS_WebRequest_SetRequestHeader,
   /** @export */
   JS_WebRequest_SetTimeout: _JS_WebRequest_SetTimeout,
+  /** @export */
+  OnWalkModeToggledInJS: _OnWalkModeToggledInJS,
   /** @export */
   SendObjectDataToJS: _SendObjectDataToJS,
   /** @export */
